@@ -1,0 +1,82 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum userRoles {
+  user
+  admin
+}
+
+enum logPrivacy {
+  public
+  guild
+  mods
+  private
+}
+
+model User {
+  id            Int         @default(autoincrement()) @id
+  discordUser   DiscordUser @relation(fields: [discordUserId], references: [id])
+  discordUserId String      @unique
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  accessToken   String
+  refreshToken  String
+  apiToken      String      @unique
+  bots          BotOwners[]
+  role          userRoles   @default(user)
+}
+
+model DiscordUser {
+  id            String      @id
+  user          User?
+  email         String?
+  username      String
+  discriminator String
+  avatar        String?
+  flags         Int
+  guilds        Json        @default("[]")
+  bot           Boolean     @default(false)
+  owners        BotOwners[]
+  logs          Logs[]
+}
+
+model BotOwners {
+  user   User        @relation(fields: [userId], references: [id])
+  userId Int
+  bot    DiscordUser @relation(fields: [botId], references: [id])
+  botId  String
+
+  @@id([userId, botId])
+}
+
+model Logs {
+  uuid         String      @id @default(cuid())
+  owner        DiscordUser @relation(fields: [ownerId], references: [id])
+  ownerId      String
+  createdAt    DateTime    @default(now())
+  expiresAt    DateTime?   
+  content      String
+  messageCount Int
+  messages     Json
+  users        Json
+  privacy      logPrivacy  @default(public)
+  guild        String?
+
+  @@index([ownerId, createdAt(sort: Desc)])
+}
+
+model Session {
+  id        String   @id
+  sid       String   @unique
+  data      String
+  expiresAt DateTime
+}
